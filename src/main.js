@@ -8,8 +8,10 @@ import {
   desyncIndicators,
   elementSelectors,
 } from "./shared/data/element-selectors";
+import { debounce } from "./shared/modules/debounce";
 import { logger } from "./shared/modules/logger";
 import { isOperablePlaylistPage } from "./shared/modules/page-guard";
+import { resolvePlaylistMetadataRow } from "./shared/modules/playlist-metadata-row";
 import { isSortingEnabledForCount } from "./shared/modules/sort-cap";
 import {
   convertSecondsToShortDuration,
@@ -298,6 +300,13 @@ const setupPage = () => {
     lastVideoInteractedWith: null,
   };
 
+  const onWindowResized = debounce(() => {
+    if (!isOperablePlaylistPage()) return;
+
+    logger.debug("window_resized_reprocessing");
+    main();
+  }, 250);
+
   const onYoutubeNavigationFinished = () => {
     logger.debug("yt_navigation_finished", () => ({
       pathname: window.location.pathname,
@@ -309,6 +318,8 @@ const setupPage = () => {
       onYoutubeNavigationFinished,
       false,
     );
+    window.removeEventListener("resize", onWindowResized);
+    onWindowResized.cancel();
 
     window.ytpdc.playlistObserver?.disconnect();
 
@@ -333,6 +344,7 @@ const setupPage = () => {
     onYoutubeNavigationFinished,
     false,
   );
+  window.addEventListener("resize", onWindowResized);
 
   const onPlaylistInteractedWith = (event) => {
     window.ytpdc.lastVideoInteractedWith = event.target.closest(
@@ -1037,9 +1049,7 @@ const addPlaylistSummaryToPage = ({
 }) => {
   removeDurationSpan();
 
-  const metadataRow = document.querySelector(
-    elementSelectors.playlistMetadataRow,
-  );
+  const metadataRow = resolvePlaylistMetadataRow(document, isElementVisible);
 
   if (!metadataRow) {
     logger.debug("metadata_row_not_found");

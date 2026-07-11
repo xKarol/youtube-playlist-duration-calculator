@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import { describe, it } from "node:test";
-import { desyncIndicators } from "./element-selectors.js";
+import { JSDOM } from "jsdom";
+import { desyncIndicators, elementSelectors } from "./element-selectors.js";
 
 // Minimal DOM mock for testing element selectors
 const createMockDoc = (elements = {}) => ({
@@ -42,5 +43,53 @@ describe("desyncIndicators", () => {
     const result = desyncIndicators.detectVariant(doc);
     assert.strictEqual(result.variant, "viewmodel");
     assert.strictEqual(result.known, true);
+  });
+});
+
+describe("elementSelectors.playlistMetadataRow", () => {
+  it("matches the metadata row in the wide page-header structure", () => {
+    const dom = new JSDOM(`
+      <div class="ytPageHeaderViewModelContent">
+        <div class="ytPageHeaderViewModelHeadline">
+          <div>
+            <yt-content-metadata-view-model class="ytPageHeaderViewModelContentMetadata">
+              <div></div>
+              <div class="ytContentMetadataViewModelMetadataRow"></div>
+            </yt-content-metadata-view-model>
+          </div>
+        </div>
+      </div>
+    `);
+
+    assert.ok(
+      dom.window.document.querySelector(elementSelectors.playlistMetadataRow),
+    );
+  });
+
+  it("matches the metadata row when the narrow layout changes its nesting", () => {
+    const dom = new JSDOM(`
+      <div class="ytPageHeaderViewModelContent">
+        <div class="ytPageHeaderViewModelContentMetadata">
+          <div class="ytContentMetadataViewModelMetadataRow"></div>
+        </div>
+      </div>
+    `);
+
+    assert.ok(
+      dom.window.document.querySelector(elementSelectors.playlistMetadataRow),
+    );
+  });
+
+  it("does not match metadata rows from video cards", () => {
+    const dom = new JSDOM(`
+      <yt-content-metadata-view-model>
+        <div class="ytContentMetadataViewModelMetadataRow"></div>
+      </yt-content-metadata-view-model>
+    `);
+
+    assert.strictEqual(
+      dom.window.document.querySelector(elementSelectors.playlistMetadataRow),
+      null,
+    );
   });
 });

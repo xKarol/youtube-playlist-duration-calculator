@@ -1,7 +1,7 @@
 export const elementSelectors = {
   timestamp: "ytd-thumbnail-overlay-time-status-renderer",
   playlistMetadataRow:
-    ".ytPageHeaderViewModelContent > .ytPageHeaderViewModelHeadline > div > yt-content-metadata-view-model > div:nth-child(2)",
+    ".ytPageHeaderViewModelContentMetadata .ytContentMetadataViewModelMetadataRow",
   playlistActionRow: ".ytFlexibleActionsViewModelActionRow",
   video: "ytd-playlist-video-renderer",
   playlist: "ytd-playlist-video-list-renderer #contents",
