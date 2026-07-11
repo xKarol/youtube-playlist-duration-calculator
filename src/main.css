@@ -79,6 +79,10 @@ html[dark] .ytListItemViewModelTitle {
   color: var(--yt-spec-text-primary, #fff);
 }
 
+.ytContentMetadataViewModelMetadataRow {
+  flex-wrap: wrap;
+}
+
 .ytContextualSheetLayoutFooterContainer {
   display: block;
 }
