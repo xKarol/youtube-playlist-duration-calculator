@@ -1029,7 +1029,15 @@ const createSortDropdown = (playlistObserver) => {
     const playlistSorter = new PlaylistSorter(value);
     const sortedVideos = playlistSorter.sort(videos.slice(0, 100));
 
-    playlistElement.replaceChildren(...sortedVideos);
+    // In viewmodel architecture, each lockup is nested inside a per-video
+    // wrapper div that carries margin-bottom spacing. replaceChildren must
+    // use those wrappers to preserve the original layout spacing.
+    const usesWrappers = videos[0]?.parentElement !== playlistElement;
+    const elementsToInsert = usesWrappers
+      ? sortedVideos.map((v) => v.parentElement)
+      : sortedVideos;
+
+    playlistElement.replaceChildren(...elementsToInsert);
 
     playlistObserver?.reconnect();
   });
