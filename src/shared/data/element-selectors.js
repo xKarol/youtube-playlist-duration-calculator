@@ -2,6 +2,7 @@ export const elementSelectors = {
   timestamp: "ytd-thumbnail-overlay-time-status-renderer",
   playlistMetadataRow:
     ".ytPageHeaderViewModelContentMetadata .ytContentMetadataViewModelMetadataRow",
+  legacyPlaylistMetadata: "ytd-playlist-byline-renderer .metadata-stats",
   playlistActionRow: ".ytFlexibleActionsViewModelActionRow",
   video: "ytd-playlist-video-renderer",
   playlist: "ytd-playlist-video-list-renderer #contents",

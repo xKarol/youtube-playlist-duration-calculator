@@ -11,7 +11,10 @@ import {
 import { debounce } from "./shared/modules/debounce";
 import { logger } from "./shared/modules/logger";
 import { isOperablePlaylistPage } from "./shared/modules/page-guard";
-import { resolvePlaylistMetadataRow } from "./shared/modules/playlist-metadata-row";
+import {
+  resolveLegacyPlaylistMetadata,
+  resolvePlaylistMetadataRow,
+} from "./shared/modules/playlist-metadata-row";
 import { isSortingEnabledForCount } from "./shared/modules/sort-cap";
 import {
   convertSecondsToShortDuration,
@@ -389,6 +392,7 @@ const isElementVisible = (element) => {
 const removeDurationSpan = () => {
   document.querySelector("#ytpdc-duration-span")?.remove();
   document.querySelector("#ytpdc-delimiter")?.remove();
+  document.querySelector("#ytpdc-legacy-duration-wrapper")?.remove();
 };
 
 const removeSortButton = () => {
@@ -1059,15 +1063,15 @@ const addPlaylistSummaryToPage = ({
 
   const metadataRow = resolvePlaylistMetadataRow(document, isElementVisible);
 
-  if (!metadataRow) {
-    logger.debug("metadata_row_not_found");
-    return;
-  }
-
   const isApproximate = lowConfidenceCount > 0;
   const totalSeconds = timestamps.reduce((sum, ts) => sum + (ts ?? 0), 0);
   const shortDuration = convertSecondsToShortDuration(totalSeconds);
   const durationText = isApproximate ? `~${shortDuration}` : shortDuration;
+
+  if (!metadataRow) {
+    addDurationToLegacySidebar(durationText, playlistObserver);
+    return;
+  }
 
   const delimiter = document.createElement("span");
   delimiter.id = "ytpdc-delimiter";
@@ -1094,6 +1098,75 @@ const addPlaylistSummaryToPage = ({
     metadataRowTag: metadataRow.tagName,
     metadataRowClasses: metadataRow.className,
   }));
+};
+
+const addDurationToLegacySidebar = (durationText, playlistObserver) => {
+  const legacyMetadata = resolveLegacyPlaylistMetadata(
+    document,
+    isElementVisible,
+  );
+
+  if (!legacyMetadata) {
+    logger.debug("metadata_row_not_found");
+    return;
+  }
+
+  legacyMetadata.style.display = "flex";
+  legacyMetadata.style.flexWrap = "wrap";
+  legacyMetadata.style.overflow = "visible";
+  legacyMetadata.style.marginBottom = "8px";
+
+  // `yt-formatted-string` is a YouTube custom element. Its upgrade lifecycle
+  // replaces children supplied by extensions, leaving an empty host. A plain
+  // span is stable and still participates in the metadata byline's layout.
+  const durationSpan = document.createElement("span");
+  durationSpan.id = "ytpdc-duration-span";
+  durationSpan.className =
+    "ytpdc-legacy-duration byline-item style-scope ytd-playlist-byline-renderer";
+  durationSpan.textContent = durationText;
+  copyBylineStyles(durationSpan, legacyMetadata.querySelector(".byline-item"));
+
+  const durationWrapper = document.createElement("span");
+  durationWrapper.id = "ytpdc-legacy-duration-wrapper";
+  durationWrapper.className = "ytpdc-legacy-duration-wrapper";
+  durationWrapper.append(durationSpan);
+
+  legacyMetadata.append(durationWrapper);
+
+  addSortButtonToActionRow(playlistObserver);
+
+  logger.debug("inserted_legacy_duration_span", () => ({
+    durationText,
+    metadataTag: legacyMetadata.tagName,
+    metadataId: legacyMetadata.id,
+  }));
+};
+
+/**
+ * The Watch Later byline is styled by Polymer rules that specifically target
+ * `yt-formatted-string`. The extension must use a native element so YouTube
+ * does not erase its text, therefore copy the computed presentation from a
+ * real byline item instead of relying on those element-specific selectors.
+ */
+const copyBylineStyles = (target, source) => {
+  if (!source) return;
+
+  const sourceStyles = getComputedStyle(source);
+  const properties = [
+    "color",
+    "font-family",
+    "font-size",
+    "font-style",
+    "font-weight",
+    "letter-spacing",
+    "line-height",
+    "text-transform",
+    "white-space",
+  ];
+
+  properties.forEach((property) => {
+    target.style.setProperty(property, sourceStyles.getPropertyValue(property));
+  });
 };
 
 const start = () => {

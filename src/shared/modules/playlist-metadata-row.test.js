@@ -1,7 +1,10 @@
 import assert from "node:assert";
 import { describe, it } from "node:test";
 import { JSDOM } from "jsdom";
-import { resolvePlaylistMetadataRow } from "./playlist-metadata-row.js";
+import {
+  resolveLegacyPlaylistMetadata,
+  resolvePlaylistMetadataRow,
+} from "./playlist-metadata-row.js";
 
 const createDocument = () => {
   return new JSDOM(`
@@ -34,5 +37,22 @@ describe("resolvePlaylistMetadataRow", () => {
     const row = resolvePlaylistMetadataRow(doc, () => false);
 
     assert.strictEqual(row.dataset.row, "hidden");
+  });
+});
+
+describe("resolveLegacyPlaylistMetadata", () => {
+  it("finds the legacy byline used by Watch Later", () => {
+    const doc = new JSDOM(`
+      <ytd-playlist-byline-renderer>
+        <div class="metadata-stats" data-row="legacy">
+          <yt-formatted-string class="byline-item">50 filmów</yt-formatted-string>
+          <yt-formatted-string class="byline-item">Brak wyświetleń</yt-formatted-string>
+        </div>
+      </ytd-playlist-byline-renderer>
+    `).window.document;
+
+    const row = resolveLegacyPlaylistMetadata(doc, () => true);
+
+    assert.strictEqual(row.dataset.row, "legacy");
   });
 });

@@ -83,6 +83,20 @@ html[dark] .ytListItemViewModelTitle {
   flex-wrap: wrap;
 }
 
+.ytpdc-legacy-duration {
+  color: var(--yt-spec-text-primary, #fff);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.ytpdc-legacy-delimiter {
+  margin: 0 4px;
+}
+
+.ytpdc-legacy-duration-wrapper {
+  display: inline;
+}
+
 .ytContextualSheetLayoutFooterContainer {
   display: block;
 }
