@@ -1,175 +1,41 @@
-#ytpdc-loader {
-  min-height: 128px;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  animation: ytpdc-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes ytpdc-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
-}
-
-#ytpdc-playlist-summary-new #messages-container,
-#ytpdc-playlist-summary-old #messages-container {
-  display: flex;
-  flex-direction: column;
-  row-gap: 4px;
-}
-
-#ytpdc-failure-indicator {
-  padding: 12px;
-  border: 1px solid rgba(252, 165, 165, 0.3);
-  border-radius: 8px;
-  background: rgba(252, 165, 165, 0.1);
-}
-
-#ytpdc-failure-indicator p {
-  margin: 4px 0;
-  color: #fff;
-}
-
-#ytpdc-failure-report-link {
-  display: inline-block;
-  margin-top: 4px;
-  color: #fca5a5;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-#ytpdc-failure-report-link:hover {
-  color: #fecaca;
-}
-
-#ytpdc-playlist-summary-new.container,
-#ytpdc-playlist-summary-old.container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: start;
-  min-height: 128px;
-  margin: 16px 0px;
-  padding: 16px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.2);
-  font-size: 1.5rem;
-}
-
-.ytpdc-playlist-summary-item {
-  margin: 8px 0px;
-  display: flex;
-  flex-direction: row;
-}
-
-.ytpdc-playlist-summary-item-label {
-  color: #fff;
-}
-
-.ytpdc-playlist-summary-item-value {
-  font-weight: 700;
-  padding-left: 8px;
-}
-
-#ytpdc-playlist-summary-tooltip {
-  display: flex;
-  margin-top: 16px;
-  flex-direction: row;
-  align-items: center;
-}
-
-#ytpdc-playlist-summary-tooltip svg {
-  width: 1em;
-  height: 1em;
-  color: #000;
-}
-
-#ytpdc-playlist-summary-tooltip p {
-  padding-left: 8px;
-  color: #fff;
-}
-
-#ytpdc-sort-control {
-  width: 100%;
-  margin: 8px 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-}
-
-#ytpdc-sort-control .label {
-  padding-right: 8px;
-  flex-shrink: 0;
-  color: #fff;
-}
-
-#ytpdc-sort-control-dropdown-container {
-  flex-grow: 1;
-  position: relative;
-}
-
-#ytpdc-sort-control-dropdown-button {
-  width: 100%;
-  padding: 8px;
-  margin: 0px;
-  border-radius: 4px;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  column-gap: 16px;
-
-  appearance: button;
-  border: 1px solid transparent;
-  background-color: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  font-size: 1.5rem;
-  font-weight: 700;
-  text-transform: none;
-  cursor: pointer;
-}
-
-#ytpdc-sort-control-dropdown-button span {
-  font-size: 1.25rem;
-  pointer-events: none;
-  text-align: start;
-}
-
-#ytpdc-sort-control-dropdown-button svg {
-  flex-shrink: 0;
-  width: 1em;
-  height: 1em;
-  vertical-align: middle;
-}
-
-#ytpdc-sort-control-dropdown-options {
-  width: 100%;
-  margin-top: 4px;
+#ytpdc-sort-dropdown {
   position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 200px;
   z-index: 999;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(36px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
 }
 
-#ytpdc-sort-control-dropdown-options .hidden {
+html[dark] #ytpdc-sort-dropdown {
+  background: rgba(30, 30, 30, 0.92);
+}
+
+#ytpdc-sort-dropdown.ytpdc-hidden {
   display: none;
 }
 
 .ytpdc-sort-control-dropdown-option {
-  padding: 4px 8px 4px 8px;
-  border-radius: 2px;
+  padding: 8px 16px;
   cursor: pointer;
+  font-size: 14px;
+  color: #0f0f0f;
+  white-space: nowrap;
+}
+
+html[dark] .ytpdc-sort-control-dropdown-option {
   color: #fff;
 }
 
 .ytpdc-sort-control-dropdown-option:hover {
-  background-color: rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+html[dark] .ytpdc-sort-control-dropdown-option:hover {
+  background: rgba(255, 255, 255, 0.12);
 }

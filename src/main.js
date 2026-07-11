@@ -3,7 +3,6 @@ import { computeMaxError } from "./modules/extraction/error-bound";
 import { extractTimestamp } from "./modules/extraction/orchestrator";
 import { extractPlaylistCount } from "./modules/extraction/playlist-count-extraction";
 import { isRemovalMutation } from "./modules/reactivity/mutation-shape";
-import { buildReportUrl, detectBrowser } from "./modules/reporting/report-url";
 import { PlaylistSorter } from "./modules/sorting";
 import {
   desyncIndicators,
@@ -13,6 +12,7 @@ import { logger } from "./shared/modules/logger";
 import { isOperablePlaylistPage } from "./shared/modules/page-guard";
 import { isSortingEnabledForCount } from "./shared/modules/sort-cap";
 import {
+  convertSecondsToShortDuration,
   convertSecondsToTimestamp,
   getTimestampFromVideo,
 } from "./shared/modules/timestamp";
@@ -35,8 +35,6 @@ const checkPlaylistReady = () => {
   if (activePlaylistInterval) {
     clearInterval(activePlaylistInterval);
   }
-
-  displayLoader();
 
   const maxPollCount = 60;
   let pollCount = 0;
@@ -80,25 +78,6 @@ const checkPlaylistReady = () => {
       variant: variant.variant,
       variantKnown: variant.known,
     }));
-
-    if (
-      shouldSignalFailureForUnknownVariant({
-        pollCount,
-        playlistExists,
-        variant,
-      })
-    ) {
-      clearInterval(activePlaylistInterval);
-      activePlaylistInterval = null;
-      signalFailure(variant, {
-        pollCount,
-        playlistExists,
-        playlistVisible: isElementVisible(playlistElement),
-        pathname: window.location.pathname,
-        variant: variant.variant,
-      });
-      return;
-    }
 
     // Non-operable pages (anything other than /playlist) stop silently.
     // This includes /feed/playlists, /watch, /feed/history, and channel
@@ -190,26 +169,6 @@ const checkPlaylistReady = () => {
 
     pollCount++;
   }, 1000);
-};
-
-/**
- * Whether the readiness loop should signal user-visible failure.
- *
- * Fires when the variant is unknown, no playlist element has appeared,
- * and we are not on a /playlist URL. After ~15s of ambivalence this
- * branch triggers the failure indicator with diagnostics.
- */
-const shouldSignalFailureForUnknownVariant = ({
-  pollCount,
-  playlistExists,
-  variant,
-}) => {
-  return (
-    pollCount > 15 &&
-    !playlistExists &&
-    !variant.known &&
-    !isOperablePlaylistPage()
-  );
 };
 
 /**
@@ -326,26 +285,6 @@ const isViewmodelReady = () => {
   });
 };
 
-const displayLoader = () => {
-  if (!isOperablePlaylistPage()) {
-    return;
-  }
-
-  const playlistSummaryElement = getPlaylistSummaryElement();
-
-  if (!playlistSummaryElement) {
-    return;
-  }
-
-  const loaderElement = document.createElement("div");
-  loaderElement.id = "ytpdc-loader";
-  loaderElement.textContent = chrome.i18n.getMessage("loaderMessage");
-  loaderElement.style.color = "#fff";
-
-  playlistSummaryElement.innerHTML = "";
-  playlistSummaryElement.appendChild(loaderElement);
-};
-
 const setupPage = () => {
   if (window.ytpdc?.pageSetupDone) return;
 
@@ -373,7 +312,8 @@ const setupPage = () => {
 
     window.ytpdc.playlistObserver?.disconnect();
 
-    getPlaylistSummaryElement()?.remove();
+    removeDurationSpan();
+    removeSortButton();
 
     window.ytpdc = {
       pageSetupDone: false,
@@ -434,20 +374,16 @@ const isElementVisible = (element) => {
   );
 };
 
-const getPlaylistSummaryElement = () => {
-  const selector =
-    elementSelectors.playlistSummary[isNewDesign() ? "new" : "old"];
-
-  return document.querySelector(selector);
+const getDurationSpanElement = () => {
+  return document.querySelector("#ytpdc-duration-span");
 };
 
-const isNewDesign = () => {
-  const designAnchors = {
-    new: document.querySelector(elementSelectors.designAnchor.new),
-    old: document.querySelector(elementSelectors.designAnchor.old),
-  };
+const removeDurationSpan = () => {
+  getDurationSpanElement()?.remove();
+};
 
-  return designAnchors.new && designAnchors.old.getAttribute("hidden") !== null;
+const removeSortButton = () => {
+  document.querySelector("#ytpdc-sort-button")?.remove();
 };
 
 /**
@@ -574,54 +510,6 @@ const getVideoTitle = (video) => {
   return video.querySelector(elementSelectors.videoTitle)?.title;
 };
 
-const signalFailure = (variant, snapshot) => {
-  const summaryEl = getPlaylistSummaryElement();
-
-  if (summaryEl) {
-    const msg = document.createElement("div");
-    msg.id = "ytpdc-failure-indicator";
-
-    const titleEl = document.createElement("p");
-    titleEl.id = "ytpdc-failure-title";
-    titleEl.textContent = chrome.i18n.getMessage("failureIndicator_title");
-    msg.appendChild(titleEl);
-
-    const bodyEl = document.createElement("p");
-    bodyEl.id = "ytpdc-failure-body";
-    bodyEl.textContent = chrome.i18n.getMessage("failureIndicator_body");
-    msg.appendChild(bodyEl);
-
-    const reportUrl = buildReportUrl({
-      extensionVersion: chrome.runtime.getManifest().version,
-      userAgent: navigator.userAgent,
-      locale: document.documentElement.lang,
-    });
-    const reportLink = document.createElement("a");
-    reportLink.id = "ytpdc-failure-report-link";
-    reportLink.href = reportUrl;
-    reportLink.target = "_blank";
-    reportLink.rel = "noopener noreferrer";
-    reportLink.textContent = chrome.i18n.getMessage(
-      "failureIndicator_reportLink",
-    );
-    msg.appendChild(reportLink);
-
-    summaryEl.innerHTML = "";
-    summaryEl.appendChild(msg);
-  }
-
-  // Diagnostic logging surfaced via `?ytpdc-debug=true`.
-  logger.error("extension_failure", () => ({
-    reason: "unknown_layout_variant",
-    variant,
-    snapshot,
-    extensionVersion: chrome.runtime.getManifest().version,
-    browser: detectBrowser(navigator.userAgent),
-    locale: document.documentElement.lang,
-    timestamp: new Date().toISOString(),
-  }));
-};
-
 const processPlaylist = () => {
   // Defense-in-depth at processPlaylist itself: the discovery branch of
   // checkPlaylistReady already gates on `pathname === "/playlist"`, but
@@ -690,7 +578,6 @@ const processPlaylist = () => {
 
   addPlaylistSummaryToPage({
     timestamps,
-    playlistDuration,
     lowConfidenceCount,
     playlistObserver,
   });
@@ -834,23 +721,11 @@ const onPlaylistMutated = (mutationList, observer) => {
     types: mutationList.map((m) => m.type),
     addedTotal: mutationList.reduce((n, m) => n + m.addedNodes.length, 0),
     removedTotal: mutationList.reduce((n, m) => n + m.removedNodes.length, 0),
-    sortDropdownUsed: window.ytpdc.sortDropdown.used,
     lastVideoInteracted: !!window.ytpdc.lastVideoInteractedWith,
   }));
 
   if (mutationList.length === 1 && mutationList[0].type === "childList") {
     const mutation = mutationList[0];
-
-    if (shouldRequestPageReload(mutation)) {
-      displayMessages([
-        chrome.i18n.getMessage("problemEncountered_paragraphOne"),
-        chrome.i18n.getMessage("problemEncountered_paragraphTwo"),
-      ]);
-
-      observer.disconnect();
-
-      return;
-    }
 
     // User-initiated removal (possibly post-sort): re-add the wrong-removed
     // video before recomputing. This branch is only correct when a video was
@@ -893,378 +768,152 @@ const onPlaylistMutated = (mutationList, observer) => {
   }
 };
 
-/**
- * Checks whether enough conditions hold true when the playlist is mutated
- * to request a page reload
- * @param {MutationRecord} mutation
- * @returns {boolean}
- */
-const shouldRequestPageReload = (mutation) => {
-  return (
-    mutation.addedNodes.length === 0 &&
-    mutation.removedNodes.length === 1 &&
-    mutation.removedNodes[0]?.tagName.toLowerCase() ===
-      elementSelectors.video &&
-    window.ytpdc.sortDropdown.used &&
-    !window.ytpdc.lastVideoInteractedWith
-  );
-};
+const addSortButtonToActionRow = (playlistObserver) => {
+  removeSortButton();
 
-/**
- * Display a list of messages within the playlist summary element
- * @param {string[]} messages
- */
-const displayMessages = (messages) => {
-  const playlistSummaryElement = getPlaylistSummaryElement();
+  const totalVideos = countTotalVideosInPlaylist();
 
-  if (!playlistSummaryElement) {
+  if (!isSortingEnabledForCount(totalVideos)) {
     return;
   }
 
-  const containerElement = document.createElement("div");
-  containerElement.id = "messages-container";
+  const actionRow = document.querySelector(elementSelectors.playlistActionRow);
 
-  messages.forEach((message) => {
-    const messageElement = document.createElement("p");
-    messageElement.textContent = message;
-    containerElement.appendChild(messageElement);
-  });
+  if (!actionRow) {
+    logger.debug("action_row_not_found");
+    return;
+  }
 
-  playlistSummaryElement.innerHTML = "";
-  playlistSummaryElement.appendChild(containerElement);
-};
+  const sortButton = createSortIconButton(playlistObserver);
 
-const addPlaylistSummaryToPage = ({
-  timestamps,
-  playlistDuration,
-  lowConfidenceCount,
-  playlistObserver,
-}) => {
-  const playlistSummaryElement = createPlaylistSummaryElement({
-    timestamps,
-    playlistDuration,
-    lowConfidenceCount,
-    playlistObserver,
-  });
+  const lastChild = actionRow.lastElementChild;
 
-  const existingPlaylistSummaryElement = getPlaylistSummaryElement();
-
-  if (existingPlaylistSummaryElement) {
-    logger.debug("replacing_existing_summary", () => ({
-      existingId: existingPlaylistSummaryElement.id,
-      existingVisible: isElementVisible(existingPlaylistSummaryElement),
-    }));
-
-    existingPlaylistSummaryElement.replaceWith(playlistSummaryElement);
+  if (lastChild) {
+    actionRow.insertBefore(sortButton, lastChild);
   } else {
-    const playlistMetadataElement = getPlaylistMetadataElement();
-
-    if (!playlistMetadataElement) {
-      throw new Error(
-        [
-          "Cannot add playlist summary to page",
-          "Reason = Cannot find playlist metadata element in document",
-        ].join(", "),
-      );
-    }
-
-    playlistMetadataElement.parentElement.insertBefore(
-      playlistSummaryElement,
-      playlistMetadataElement.nextElementSibling,
-    );
-
-    logger.debug("inserted_playlist_summary", () => ({
-      summaryId: playlistSummaryElement.id,
-      isNewDesign: isNewDesign(),
-      summaryVisible: isElementVisible(playlistSummaryElement),
-      summaryOffsetHeight: playlistSummaryElement.offsetHeight,
-      summaryOffsetWidth: playlistSummaryElement.offsetWidth,
-      parentOverflow: getComputedStyle(playlistSummaryElement.parentElement)
-        .overflow,
-      parentDisplay: getComputedStyle(playlistSummaryElement.parentElement)
-        .display,
-      parentHeight: getComputedStyle(playlistSummaryElement.parentElement)
-        .height,
-    }));
+    actionRow.appendChild(sortButton);
   }
-};
 
-const createPlaylistSummaryElement = ({
-  timestamps,
-  playlistDuration,
-  lowConfidenceCount,
-  playlistObserver,
-}) => {
-  const newDesign = isNewDesign();
-
-  logger.debug("creating_summary_element", () => ({
-    newDesign,
-    newAnchorFound: !!document.querySelector(elementSelectors.designAnchor.new),
-    oldAnchorFound: !!document.querySelector(elementSelectors.designAnchor.old),
-    oldAnchorHidden: document
-      .querySelector(elementSelectors.designAnchor.old)
-      ?.getAttribute("hidden"),
-    totalVideosInPlaylist: countTotalVideosInPlaylist(),
+  logger.debug("inserted_sort_button", () => ({
+    actionRowTag: actionRow.tagName,
+    actionRowClasses: actionRow.className,
   }));
-
-  const containerElement = document.createElement("div");
-  containerElement.id = elementSelectors.playlistSummary[
-    newDesign ? "new" : "old"
-  ].replace("#", "");
-  containerElement.classList.add("container");
-
-  if (!newDesign) {
-    if (isDarkMode()) {
-      containerElement.style.color = "white";
-    } else {
-      containerElement.style.background = "rgba(0,0,0,0.8)";
-      containerElement.style.color = "white";
-    }
-  }
-
-  // When any video is estimated (low-confidence), the total is
-  // approximate. We signal with a leading "~" only. A near-universal
-  // "approximately" glyph that needs no jargon. Color stays green in
-  // all cases: the prior amber shift collided with the adjacent
-  // "Videos counted" row, and color should not be the sole signal
-  // for colorblind users anyway. The tilde is the accessible signal.
-  // Severity (how many were estimated) remains in the dev log via
-  // logger.debug("playlist_calculated", ...) for diagnostics.
-  const isApproximate = lowConfidenceCount > 0;
-  const totalDuration = createSummaryItem(
-    chrome.i18n.getMessage("playlistSummary_totalDuration"),
-    `${isApproximate ? "~" : ""}${playlistDuration}`,
-    "#86efac",
-  );
-
-  containerElement.appendChild(totalDuration);
-
-  const videosCounted = createSummaryItem(
-    chrome.i18n.getMessage("playlistSummary_videosCounted"),
-    `${timestamps.length}`,
-    "#fdba74",
-  );
-
-  containerElement.appendChild(videosCounted);
-
-  const totalVideosInPlaylist = countTotalVideosInPlaylist();
-  const videosNotCounted = createSummaryItem(
-    chrome.i18n.getMessage("playlistSummary_videosNotCounted"),
-    `${
-      totalVideosInPlaylist ? totalVideosInPlaylist - timestamps.length : "N/A"
-    }`,
-    "#fca5a5",
-  );
-
-  containerElement.appendChild(videosNotCounted);
-
-  // Sorting is gated by the playlist's total video count, not the visible
-  // subset. A `null` count (stats element absent or not yet rendered, e.g.
-  // on the viewmodel architecture where readiness is decided by discovery
-  // confidence rather than the renderer sidebar) must NOT enable sorting:
-  // `null <= 100` coerces to `0 <= 100` and would falsely show the dropdown.
-  // The defensive predicate returns `false` for unknown counts.
-  if (isSortingEnabledForCount(totalVideosInPlaylist)) {
-    if (window.ytpdc.sortDropdown.element) {
-      containerElement.appendChild(window.ytpdc.sortDropdown.element);
-    } else {
-      const sortDropdown = createSortDropdown(playlistObserver);
-      window.ytpdc.sortDropdown.element = sortDropdown;
-      containerElement.appendChild(sortDropdown);
-    }
-  }
-
-  // The tooltip (limit explainer) renders only when the count is known and
-  // at or over the cap. An unknown count degrades to no dropdown and no
-  // tooltip, rather than the misleading "sorting disabled" message.
-  if (
-    totalVideosInPlaylist !== null &&
-    !isSortingEnabledForCount(totalVideosInPlaylist)
-  ) {
-    const tooltipElement = document.createElement("div");
-    tooltipElement.id = "ytpdc-playlist-summary-tooltip";
-
-    const iconElement = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "svg",
-    );
-
-    iconElement.setAttribute("preserveAspectRatio", "xMidYMid meet");
-    iconElement.setAttribute("viewBox", "0 0 24 24");
-    iconElement.innerHTML = `<path fill="white" fill-rule="evenodd" d="M12 1C5.925 1 1
-    5.925 1 12s4.925 11 11 11s11-4.925 11-11S18.075 1 12 1Zm-.5 5a1 1 0 1 0 0
-    2h.5a1 1 0 1 0 0-2h-.5ZM10 10a1 1 0 1 0 0 2h1v3h-1a1 1 0 1 0 0 2h4a1 1 0 1 0
-    0-2h-1v-4a1 1 0 0 0-1-1h-2Z" clip-rule="evenodd"/>`;
-
-    tooltipElement.appendChild(iconElement);
-
-    const textElement = document.createElement("p");
-    textElement.textContent = chrome.i18n.getMessage("playlistSummary_tooltip");
-
-    tooltipElement.appendChild(textElement);
-
-    containerElement.appendChild(tooltipElement);
-  }
-
-  return containerElement;
 };
 
-const getPlaylistMetadataElement = () => {
-  for (const meta of elementSelectors.playlistMetadata) {
-    let element;
-
-    if (meta.queryMethod === "querySelectorAllAndFilter") {
-      const potentialElements = document.querySelectorAll(meta.selector);
-
-      logger.debug("metadata_selector_querySelectorAll", () => ({
-        selector: meta.selector,
-        matchCount: potentialElements.length,
-      }));
-
-      if (potentialElements.length > 0) {
-        element = [...potentialElements].find(isElementVisible);
-
-        logger.debug("metadata_selector_visibility_filter", () => ({
-          selector: meta.selector,
-          visibleElementFound: !!element,
-        }));
-
-        if (element) {
-          logger.debug("metadata_selector_matched", () => ({
-            selector: meta.selector,
-            elementTag: element.tagName,
-            elementClasses: element.className,
-            parentTag: element.parentElement?.tagName,
-            parentClasses: element.parentElement?.className,
-            parentId: element.parentElement?.id,
-            parentOverflow: element.parentElement
-              ? getComputedStyle(element.parentElement).overflow
-              : null,
-          }));
-
-          return element;
-        }
-      }
-    } else {
-      element = document.querySelector(meta.selector);
-
-      logger.debug("metadata_selector_querySelector", () => ({
-        selector: meta.selector,
-        found: !!element,
-      }));
-
-      if (element && isElementVisible(element)) {
-        logger.debug("metadata_selector_matched", () => ({
-          selector: meta.selector,
-          elementTag: element.tagName,
-          elementClasses: element.className,
-          parentTag: element.parentElement?.tagName,
-          parentClasses: element.parentElement?.className,
-          parentId: element.parentElement?.id,
-          parentOverflow: element.parentElement
-            ? getComputedStyle(element.parentElement).overflow
-            : null,
-        }));
-
-        return element;
-      }
-    }
-  }
-
-  logger.debug("metadata_selector_no_match");
-
-  return null;
-};
-
-const isDarkMode = () => {
-  return document.documentElement.getAttribute("dark") !== null;
-};
-
-const createSummaryItem = (label, value, valueColor = "#facc15") => {
-  const container = document.createElement("div");
-  container.classList.add("ytpdc-playlist-summary-item");
-
-  const labelContainer = document.createElement("p");
-  labelContainer.classList.add("ytpdc-playlist-summary-item-label");
-  labelContainer.textContent = label;
-
-  const valueContainer = document.createElement("p");
-  valueContainer.classList.add("ytpdc-playlist-summary-item-value");
-  valueContainer.style.color = valueColor;
-  valueContainer.textContent = value;
-
-  container.appendChild(labelContainer);
-  container.appendChild(valueContainer);
-
-  return container;
-};
-
-const countTotalVideosInPlaylist = () => {
-  // The legacy `#stats yt-formatted-string`
-  // and `.metadata-stats yt-formatted-string` selectors no longer resolve
-  // on the current YouTube playlist page. YouTube moved the count into a
-  // page-header `yt-content-metadata-view-model` span ("154 videos") flanked
-  // by delimiter spans. The legacy selectors remain as a priority fallback
-  // for any YouTube variant still rendering the old stats element. The
-  // content-pattern extractor handles the current layout and is
-  // locale-independent (it matches delimiter structure, not the "videos"
-  // word, which is too risky to enumerate across all shipped locales).
-  //
-  // Returns `null` only when BOTH strategies miss so the sort gate can
-  // degrade to the safe default (no dropdown, no tooltip) rather than the
-  // prior `0`-coercion false-positive that enabled sorting on large
-  // playlists before their stats element loaded.
-  const statsElement = document.querySelector(
-    elementSelectors.stats[isNewDesign() ? "new" : "old"],
+const createSortIconButton = (playlistObserver) => {
+  const wrapper = document.createElement("div");
+  wrapper.classList.add(
+    "ytFlexibleActionsViewModelAction",
+    "ytFlexibleActionsViewModelActionRowAction",
+    "ytFlexibleActionsViewModelActionIconOnlyButton",
   );
 
-  if (statsElement) {
-    return Number.parseInt(statsElement.innerText.replace(/\D/g, ""));
-  }
+  const buttonViewModel = document.createElement("button-view-model");
+  buttonViewModel.classList.add("ytSpecButtonViewModelHost");
 
-  const result = extractPlaylistCount(document);
-  return result.value;
+  const button = document.createElement("button");
+  button.id = "ytpdc-sort-button";
+  button.classList.add(
+    "ytSpecButtonShapeNextHost",
+    "ytSpecButtonShapeNextTonal",
+    "ytSpecButtonShapeNextOverlay",
+    "ytSpecButtonShapeNextSizeM",
+    "ytSpecButtonShapeNextIconButton",
+    "ytSpecButtonShapeNextEnableBackdropFilterExperiment",
+  );
+  button.title = chrome.i18n.getMessage("sortDropdown_label");
+  button.setAttribute(
+    "aria-label",
+    chrome.i18n.getMessage("sortDropdown_label"),
+  );
+  button.setAttribute("aria-disabled", "false");
+
+  const iconWrapper = document.createElement("div");
+  iconWrapper.classList.add(
+    "ytSpecButtonShapeNextIcon",
+    "ytSpecButtonShapeNextElevatedContent",
+  );
+  iconWrapper.setAttribute("aria-hidden", "true");
+
+  const iconHost = document.createElement("span");
+  iconHost.classList.add("ytIconWrapperHost");
+  iconHost.style.width = "24px";
+  iconHost.style.height = "24px";
+
+  const iconShape = document.createElement("span");
+  iconShape.classList.add("yt-icon-shape", "ytSpecIconShapeHost");
+
+  const iconDiv = document.createElement("div");
+  iconDiv.style.width = "100%";
+  iconDiv.style.height = "100%";
+  iconDiv.style.display = "block";
+  iconDiv.style.fill = "currentcolor";
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  svg.setAttribute("height", "24");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", "24");
+  svg.setAttribute("focusable", "false");
+  svg.setAttribute("aria-hidden", "true");
+  svg.style.pointerEvents = "none";
+  svg.style.display = "inherit";
+  svg.style.width = "100%";
+  svg.style.height = "100%";
+  svg.innerHTML = `<path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/>`;
+
+  iconDiv.appendChild(svg);
+  iconShape.appendChild(iconDiv);
+  iconHost.appendChild(iconShape);
+  iconWrapper.appendChild(iconHost);
+
+  const touchFeedback = document.createElement("yt-touch-feedback-shape");
+  touchFeedback.setAttribute("aria-hidden", "true");
+  touchFeedback.classList.add(
+    "ytSpecTouchFeedbackShapeHost",
+    "ytSpecTouchFeedbackShapeOverlayTouchResponse",
+  );
+
+  const touchStroke = document.createElement("div");
+  touchStroke.classList.add("ytSpecTouchFeedbackShapeStroke");
+  const touchFill = document.createElement("div");
+  touchFill.classList.add("ytSpecTouchFeedbackShapeFill");
+  touchFeedback.appendChild(touchStroke);
+  touchFeedback.appendChild(touchFill);
+
+  button.appendChild(iconWrapper);
+  button.appendChild(touchFeedback);
+
+  const sortDropdown = createSortDropdown(playlistObserver);
+
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    sortDropdown.classList.toggle("ytpdc-hidden");
+  });
+
+  document.addEventListener("click", () => {
+    sortDropdown.classList.add("ytpdc-hidden");
+  });
+
+  buttonViewModel.appendChild(button);
+  wrapper.appendChild(buttonViewModel);
+  wrapper.appendChild(sortDropdown);
+
+  return wrapper;
 };
 
 const createSortDropdown = (playlistObserver) => {
-  const containerElement = document.createElement("div");
-  containerElement.id = "ytpdc-sort-control";
-
-  const labelElement = document.createElement("p");
-  labelElement.classList.add("label");
-  labelElement.textContent = chrome.i18n.getMessage("sortDropdown_label");
-
-  const dropdownElement = document.createElement("div");
-  dropdownElement.id = "ytpdc-sort-control-dropdown-container";
-
-  const dropdownButtonElement = document.createElement("button");
-  dropdownButtonElement.id = "ytpdc-sort-control-dropdown-button";
-
-  const dropdownButtonTextElement = document.createElement("span");
-
-  const dropdownOptionsElement = document.createElement("div");
-  dropdownOptionsElement.id = "ytpdc-sort-control-dropdown-options";
-  dropdownOptionsElement.classList.add("hidden");
-
-  dropdownButtonElement.addEventListener("click", () => {
-    dropdownOptionsElement.classList.toggle("hidden");
-  });
+  const dropdown = document.createElement("div");
+  dropdown.id = "ytpdc-sort-dropdown";
+  dropdown.classList.add("ytpdc-hidden");
 
   const sortOptions = PlaylistSorter.getSortOptions();
 
   sortOptions.forEach((sortOption) => {
-    dropdownOptionsElement.appendChild(sortOption);
+    dropdown.appendChild(sortOption);
   });
 
-  if (sortOptions.length > 0) {
-    dropdownButtonTextElement.textContent = sortOptions[0].textContent;
-  } else {
-    dropdownButtonTextElement.textContent = chrome.i18n.getMessage(
-      "sortDropdown_noOptions",
-    );
-  }
-
-  dropdownOptionsElement.addEventListener("click", (event) => {
+  dropdown.addEventListener("click", (event) => {
     if (
       !event.target.classList.contains("ytpdc-sort-control-dropdown-option")
     ) {
@@ -1273,14 +922,10 @@ const createSortDropdown = (playlistObserver) => {
 
     window.ytpdc.sortDropdown.used = true;
 
-    dropdownOptionsElement.classList.toggle("hidden");
-    dropdownButtonTextElement.textContent = event.target.textContent;
+    dropdown.classList.add("ytpdc-hidden");
 
     playlistObserver?.disconnect();
 
-    // `getVideos()` re-derives from the live DOM on both architectures,
-    // so sorting operates on the currently-present elements rather than a
-    // frozen discovery snapshot.
     const videos = getVideos();
     const playlistElement = resolveObserverTarget();
 
@@ -1298,25 +943,59 @@ const createSortDropdown = (playlistObserver) => {
     playlistObserver?.reconnect();
   });
 
-  const caretDownIcon = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "svg",
+  return dropdown;
+};
+
+const countTotalVideosInPlaylist = () => {
+  const result = extractPlaylistCount(document);
+  return result.value;
+};
+
+const addPlaylistSummaryToPage = ({
+  timestamps,
+  lowConfidenceCount,
+  playlistObserver,
+}) => {
+  removeDurationSpan();
+
+  const metadataRow = document.querySelector(
+    elementSelectors.playlistMetadataRow,
   );
-  caretDownIcon.setAttribute("viewBox", "0 0 256 256");
-  caretDownIcon.innerHTML = `<path fill="currentColor" d="m216.49 104.49l-80
-  80a12 12 0 0 1-17 0l-80-80a12 12 0 0 1 17-17L128 159l71.51-71.52a12 12 0 0 1
-  17 17Z"/>`;
 
-  dropdownButtonElement.appendChild(dropdownButtonTextElement);
-  dropdownButtonElement.appendChild(caretDownIcon);
+  if (!metadataRow) {
+    logger.debug("metadata_row_not_found");
+    return;
+  }
 
-  dropdownElement.appendChild(dropdownButtonElement);
-  dropdownElement.appendChild(dropdownOptionsElement);
+  const isApproximate = lowConfidenceCount > 0;
+  const totalSeconds = timestamps.reduce((sum, ts) => sum + (ts ?? 0), 0);
+  const shortDuration = convertSecondsToShortDuration(totalSeconds);
+  const durationText = isApproximate ? `~${shortDuration}` : shortDuration;
 
-  containerElement.appendChild(labelElement);
-  containerElement.appendChild(dropdownElement);
+  const delimiter = document.createElement("span");
+  delimiter.setAttribute("aria-hidden", "true");
+  delimiter.className = "ytContentMetadataViewModelDelimiter";
+  delimiter.textContent = "•";
 
-  return containerElement;
+  const durationSpan = document.createElement("span");
+  durationSpan.id = "ytpdc-duration-span";
+  durationSpan.className =
+    "ytAttributedStringHost ytContentMetadataViewModelMetadataText ytAttributedStringWhiteSpacePreWrap ytAttributedStringLinkInheritColor";
+  durationSpan.setAttribute("dir", "auto");
+  durationSpan.setAttribute("role", "text");
+  durationSpan.textContent = durationText;
+
+  metadataRow.appendChild(delimiter);
+  metadataRow.appendChild(durationSpan);
+
+  addSortButtonToActionRow(playlistObserver);
+
+  logger.debug("inserted_duration_span", () => ({
+    durationText,
+    isApproximate,
+    metadataRowTag: metadataRow.tagName,
+    metadataRowClasses: metadataRow.className,
+  }));
 };
 
 const start = () => {

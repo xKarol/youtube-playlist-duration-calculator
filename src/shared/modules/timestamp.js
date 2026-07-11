@@ -23,6 +23,34 @@ export const convertSecondsToTimestamp = (seconds) => {
 };
 
 /**
+ * Converts a numerical amount of seconds to a short human-readable duration.
+ *
+ * Examples: "2h 30m", "45m", "1h 5m 30s", "3d 2h 15m"
+ * @param {number} seconds
+ * @returns {string}
+ */
+export const convertSecondsToShortDuration = (seconds) => {
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    return "0m";
+  }
+
+  const totalSeconds = Math.floor(seconds);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  const parts = [];
+
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (secs > 0 && days === 0) parts.push(`${secs}s`);
+
+  return parts.length > 0 ? parts.join(" ") : "0m";
+};
+
+/**
  * Converts a textual timestamp formatted as hh:mm:ss to its numerical value
  * represented in seconds
  * @param {string} timestamp

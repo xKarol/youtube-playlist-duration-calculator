@@ -2,6 +2,7 @@ import assert from "node:assert";
 import { describe, it } from "node:test";
 import { elementSelectors } from "src/shared/data/element-selectors.js";
 import {
+  convertSecondsToShortDuration,
   convertSecondsToTimestamp,
   convertTimestampToSeconds,
   getTimestampFromVideo,
@@ -42,6 +43,44 @@ describe("timestamp module", () => {
       assert.strictEqual(
         convertSecondsToTimestamp(Number.POSITIVE_INFINITY),
         "00:00:00",
+      );
+    });
+  });
+
+  describe("convertSecondsToShortDuration()", () => {
+    it("should format hours and minutes", () => {
+      assert.strictEqual(convertSecondsToShortDuration(9057), "2h 30m 57s");
+    });
+
+    it("should format minutes only", () => {
+      assert.strictEqual(convertSecondsToShortDuration(1337), "22m 17s");
+    });
+
+    it("should format hours and minutes without seconds when zero", () => {
+      assert.strictEqual(convertSecondsToShortDuration(9000), "2h 30m");
+    });
+
+    it("should format days, hours, and minutes", () => {
+      assert.strictEqual(convertSecondsToShortDuration(93600), "1d 2h");
+    });
+
+    it("should handle exactly zero seconds", () => {
+      assert.strictEqual(convertSecondsToShortDuration(0), "0m");
+    });
+
+    it("should handle seconds only", () => {
+      assert.strictEqual(convertSecondsToShortDuration(45), "45s");
+    });
+
+    it("should guard against negative input", () => {
+      assert.strictEqual(convertSecondsToShortDuration(-100), "0m");
+    });
+
+    it("should guard against non-finite input", () => {
+      assert.strictEqual(convertSecondsToShortDuration(Number.NaN), "0m");
+      assert.strictEqual(
+        convertSecondsToShortDuration(Number.POSITIVE_INFINITY),
+        "0m",
       );
     });
   });
