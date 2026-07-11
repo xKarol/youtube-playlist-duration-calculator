@@ -13,7 +13,7 @@
     "build:chrome": "npm run clean && vite build --mode chrome",
     "build:firefox": "npm run clean && vite build --mode firefox",
     "test": "tsx --test",
-    "clean": "npx del dist/",
+    "clean": "npx del-cli dist/",
     "watch": "npm run clean && vite build --watch --mode development",
     "lint": "biome lint --write",
     "format": "biome format --write",
