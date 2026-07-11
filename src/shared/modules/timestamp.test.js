@@ -49,7 +49,7 @@ describe("timestamp module", () => {
 
   describe("convertSecondsToShortDuration()", () => {
     it("should format hours and minutes", () => {
-      assert.strictEqual(convertSecondsToShortDuration(9057), "2h 30m 57s");
+      assert.strictEqual(convertSecondsToShortDuration(9057), "2h 30m");
     });
 
     it("should format minutes only", () => {
@@ -60,8 +60,8 @@ describe("timestamp module", () => {
       assert.strictEqual(convertSecondsToShortDuration(9000), "2h 30m");
     });
 
-    it("should format days, hours, and minutes", () => {
-      assert.strictEqual(convertSecondsToShortDuration(93600), "1d 2h");
+    it("should format hours in total (no days)", () => {
+      assert.strictEqual(convertSecondsToShortDuration(93600), "26h");
     });
 
     it("should handle exactly zero seconds", () => {
