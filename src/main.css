@@ -3,39 +3,82 @@
   top: 100%;
   right: 0;
   margin-top: 4px;
-  min-width: 200px;
-  z-index: 999;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(36px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 2202;
+  outline: none;
+  max-width: 200px;
+  border-radius: 12px;
   overflow: hidden;
-}
-
-html[dark] #ytpdc-sort-dropdown {
-  background: rgba(30, 30, 30, 0.92);
 }
 
 #ytpdc-sort-dropdown.ytpdc-hidden {
   display: none;
 }
 
-.ytpdc-sort-control-dropdown-option {
-  padding: 8px 16px;
+.ytSheetViewModelHost {
+  display: block;
+}
+
+.ytContextualSheetLayoutHost {
+  display: block;
+}
+
+.ytContextualSheetLayoutContentContainer {
+  display: block;
+}
+
+.ytListViewModelHost {
+  display: block;
+  padding: 8px 0;
+}
+
+.ytListItemViewModelHost {
+  display: block;
+}
+
+.ytListItemViewModelLayoutWrapper {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 12px;
   cursor: pointer;
-  font-size: 14px;
-  color: #0f0f0f;
-  white-space: nowrap;
 }
 
-html[dark] .ytpdc-sort-control-dropdown-option {
-  color: #fff;
-}
-
-.ytpdc-sort-control-dropdown-option:hover {
+.ytListItemViewModelLayoutWrapper:hover {
   background: rgba(0, 0, 0, 0.06);
 }
 
-html[dark] .ytpdc-sort-control-dropdown-option:hover {
+html[dark] .ytListItemViewModelLayoutWrapper:hover {
   background: rgba(255, 255, 255, 0.12);
+}
+
+.ytListItemViewModelMainContainer {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.ytListItemViewModelTextWrapper {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.ytListItemViewModelTitleWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.ytListItemViewModelTitle {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--yt-spec-text-primary, #0f0f0f);
+  white-space: nowrap;
+}
+
+html[dark] .ytListItemViewModelTitle {
+  color: var(--yt-spec-text-primary, #fff);
+}
+
+.ytContextualSheetLayoutFooterContainer {
+  display: block;
 }

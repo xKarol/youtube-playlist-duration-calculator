@@ -907,16 +907,100 @@ const createSortDropdown = (playlistObserver) => {
   dropdown.id = "ytpdc-sort-dropdown";
   dropdown.classList.add("ytpdc-hidden");
 
+  const sheetViewModel = document.createElement("div");
+  sheetViewModel.classList.add(
+    "ytSheetViewModelHost",
+    "ytSheetViewModelContextual",
+  );
+  sheetViewModel.style.outline = "none";
+  sheetViewModel.style.boxSizing = "border-box";
+
+  const sheetLayout = document.createElement("div");
+  sheetLayout.classList.add("ytContextualSheetLayoutHost");
+
+  const contentContainer = document.createElement("div");
+  contentContainer.classList.add("ytContextualSheetLayoutContentContainer");
+
+  const listViewModel = document.createElement("div");
+  listViewModel.classList.add("ytListViewModelHost");
+  listViewModel.setAttribute("role", "menu");
+
   const sortOptions = PlaylistSorter.getSortOptions();
 
   sortOptions.forEach((sortOption) => {
-    dropdown.appendChild(sortOption);
+    const optionValue = sortOption.getAttribute("value");
+    const optionLabel = sortOption.textContent;
+
+    const listItem = document.createElement("div");
+    listItem.classList.add("ytListItemViewModelHost");
+    listItem.setAttribute("role", "menuitem");
+
+    const layoutWrapper = document.createElement("div");
+    layoutWrapper.classList.add(
+      "ytListItemViewModelLayoutWrapper",
+      "ytListItemViewModelContainer",
+      "ytListItemViewModelCompact",
+      "ytListItemViewModelTappable",
+      "ytListItemViewModelInPopup",
+      "ytListItemViewModelNoTrailingText",
+    );
+
+    const mainContainer = document.createElement("div");
+    mainContainer.classList.add("ytListItemViewModelMainContainer");
+
+    const textWrapper = document.createElement("div");
+    textWrapper.classList.add(
+      "ytButtonOrAnchorHost",
+      "ytListItemViewModelButtonOrAnchor",
+      "ytListItemViewModelTextWrapper",
+    );
+    textWrapper.setAttribute("value", optionValue);
+
+    const textDiv = document.createElement("div");
+    const titleWrapper = document.createElement("div");
+    titleWrapper.classList.add("ytListItemViewModelTitleWrapper");
+
+    const titleSpan = document.createElement("span");
+    titleSpan.classList.add(
+      "ytAttributedStringHost",
+      "ytListItemViewModelTitle",
+      "ytAttributedStringWhiteSpacePreWrap",
+    );
+    titleSpan.setAttribute("role", "text");
+    titleSpan.textContent = optionLabel;
+
+    titleWrapper.appendChild(titleSpan);
+    textDiv.appendChild(titleWrapper);
+    textWrapper.appendChild(textDiv);
+
+    mainContainer.appendChild(textWrapper);
+    layoutWrapper.appendChild(mainContainer);
+    listItem.appendChild(layoutWrapper);
+    listViewModel.appendChild(listItem);
   });
 
+  contentContainer.appendChild(listViewModel);
+
+  const footerContainer = document.createElement("div");
+  footerContainer.classList.add("ytContextualSheetLayoutFooterContainer");
+
+  sheetLayout.appendChild(contentContainer);
+  sheetLayout.appendChild(footerContainer);
+  sheetViewModel.appendChild(sheetLayout);
+  dropdown.appendChild(sheetViewModel);
+
   dropdown.addEventListener("click", (event) => {
-    if (
-      !event.target.classList.contains("ytpdc-sort-control-dropdown-option")
-    ) {
+    const clickedItem = event.target.closest(".ytListItemViewModelHost");
+
+    if (!clickedItem) {
+      return;
+    }
+
+    const value = clickedItem
+      .querySelector(".ytListItemViewModelTextWrapper")
+      ?.getAttribute("value");
+
+    if (!value) {
       return;
     }
 
@@ -933,9 +1017,7 @@ const createSortDropdown = (playlistObserver) => {
       return;
     }
 
-    const playlistSorter = new PlaylistSorter(
-      event.target.getAttribute("value"),
-    );
+    const playlistSorter = new PlaylistSorter(value);
     const sortedVideos = playlistSorter.sort(videos.slice(0, 100));
 
     playlistElement.replaceChildren(...sortedVideos);
