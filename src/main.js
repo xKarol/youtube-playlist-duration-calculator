@@ -374,12 +374,9 @@ const isElementVisible = (element) => {
   );
 };
 
-const getDurationSpanElement = () => {
-  return document.querySelector("#ytpdc-duration-span");
-};
-
 const removeDurationSpan = () => {
-  getDurationSpanElement()?.remove();
+  document.querySelector("#ytpdc-duration-span")?.remove();
+  document.querySelector("#ytpdc-delimiter")?.remove();
 };
 
 const removeSortButton = () => {
@@ -1055,6 +1052,7 @@ const addPlaylistSummaryToPage = ({
   const durationText = isApproximate ? `~${shortDuration}` : shortDuration;
 
   const delimiter = document.createElement("span");
+  delimiter.id = "ytpdc-delimiter";
   delimiter.setAttribute("aria-hidden", "true");
   delimiter.className = "ytContentMetadataViewModelDelimiter";
   delimiter.textContent = "•";
