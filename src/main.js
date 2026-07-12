@@ -1087,6 +1087,9 @@ const addPlaylistSummaryToPage = ({
   durationSpan.setAttribute("role", "text");
   durationSpan.textContent = durationText;
 
+  metadataRow.style.display = "flex";
+  metadataRow.style.flexWrap = "wrap";
+
   metadataRow.appendChild(delimiter);
   metadataRow.appendChild(durationSpan);
 
