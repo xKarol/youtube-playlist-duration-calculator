@@ -14,28 +14,28 @@
   display: none;
 }
 
-.ytSheetViewModelHost {
+#ytpdc-sort-dropdown .ytSheetViewModelHost {
   display: block;
 }
 
-.ytContextualSheetLayoutHost {
+#ytpdc-sort-dropdown .ytContextualSheetLayoutHost {
   display: block;
 }
 
-.ytContextualSheetLayoutContentContainer {
+#ytpdc-sort-dropdown .ytContextualSheetLayoutContentContainer {
   display: block;
 }
 
-.ytListViewModelHost {
+#ytpdc-sort-dropdown .ytListViewModelHost {
   display: block;
   padding: 8px 0;
 }
 
-.ytListItemViewModelHost {
+#ytpdc-sort-dropdown .ytListItemViewModelHost {
   display: block;
 }
 
-.ytListItemViewModelLayoutWrapper {
+#ytpdc-sort-dropdown .ytListItemViewModelLayoutWrapper {
   display: flex;
   align-items: center;
   min-height: 40px;
@@ -43,43 +43,43 @@
   cursor: pointer;
 }
 
-.ytListItemViewModelLayoutWrapper:hover {
+#ytpdc-sort-dropdown .ytListItemViewModelLayoutWrapper:hover {
   background: rgba(0, 0, 0, 0.06);
 }
 
-html[dark] .ytListItemViewModelLayoutWrapper:hover {
+html[dark] #ytpdc-sort-dropdown .ytListItemViewModelLayoutWrapper:hover {
   background: rgba(255, 255, 255, 0.12);
 }
 
-.ytListItemViewModelMainContainer {
+#ytpdc-sort-dropdown .ytListItemViewModelMainContainer {
   display: flex;
   align-items: center;
   flex: 1;
 }
 
-.ytListItemViewModelTextWrapper {
+#ytpdc-sort-dropdown .ytListItemViewModelTextWrapper {
   display: flex;
   align-items: center;
   flex: 1;
 }
 
-.ytListItemViewModelTitleWrapper {
+#ytpdc-sort-dropdown .ytListItemViewModelTitleWrapper {
   display: flex;
   align-items: center;
 }
 
-.ytListItemViewModelTitle {
+#ytpdc-sort-dropdown .ytListItemViewModelTitle {
   font-size: 14px;
   line-height: 20px;
   color: var(--yt-spec-text-primary, #0f0f0f);
   white-space: nowrap;
 }
 
-html[dark] .ytListItemViewModelTitle {
+html[dark] #ytpdc-sort-dropdown .ytListItemViewModelTitle {
   color: var(--yt-spec-text-primary, #fff);
 }
 
-.ytContentMetadataViewModelMetadataRow {
+#ytpdc-sort-dropdown .ytContentMetadataViewModelMetadataRow {
   flex-wrap: wrap;
 }
 
@@ -97,6 +97,6 @@ html[dark] .ytListItemViewModelTitle {
   display: inline;
 }
 
-.ytContextualSheetLayoutFooterContainer {
+#ytpdc-sort-dropdown .ytContextualSheetLayoutFooterContainer {
   display: block;
 }
