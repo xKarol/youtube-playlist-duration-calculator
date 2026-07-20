@@ -781,12 +781,25 @@ const onPlaylistMutated = (mutationList, observer) => {
   }
 };
 
+const hasVisibleChipBar = () => {
+  const chipBar = document.querySelector("chip-bar-view-model");
+  if (!chipBar) return false;
+  return (
+    chipBar.offsetHeight > 0 && getComputedStyle(chipBar).display !== "none"
+  );
+};
+
 const addSortButtonToActionRow = (playlistObserver) => {
   removeSortButton();
 
   const totalVideos = countTotalVideosInPlaylist();
 
   if (!isSortingEnabledForCount(totalVideos)) {
+    return;
+  }
+
+  if (hasVisibleChipBar()) {
+    logger.debug("chip_bar_visible_skipping_sort_button");
     return;
   }
 
